@@ -9,9 +9,9 @@ import {
   ChevronRight,
   CircleHelp,
   Clock3,
-  Copy,
   FileText,
   HeartHandshake,
+  Languages,
   RotateCcw,
   Share2,
   Sparkles,
@@ -20,6 +20,7 @@ import {
   Zap,
 } from 'lucide-react'
 import './styles.css'
+import { mbtiProfileTranslations, reportTranslations, resultTranslations, testTranslations, ui } from './i18n'
 
 const mbtiQuestions = [
   { axis: 'EI', text: '忙了一整天后，你更容易通过什么恢复？', options: ['找熟悉的人聊聊天', '一个人安静待着'] },
@@ -206,14 +207,51 @@ const reportProfiles = {
   },
 }
 
-function getReport(test, result) {
-  const profile = reportProfiles[test.id]
+function getLocalizedTest(test, lang) {
+  const translation = testTranslations[test.id]
+  if (!translation || lang === 'zh') return test
+  return {
+    ...test,
+    ...translation,
+    questions: test.questions.map((question, index) => ({
+      ...question,
+      text: translation.questions[index][0],
+      options: translation.questions[index][1],
+    })),
+  }
+}
+
+function getVisibleResult(test, result, lang) {
+  if (!result) return null
+  if (test.id === 'mbti') {
+    const profile = lang === 'en' ? mbtiProfileTranslations[result.type] : mbtiProfiles[result.type]
+    return {
+      ...result,
+      profileTitle: profile[0],
+      profileSummary: profile[1],
+      advice: profile[2],
+      label: result.type,
+      summary: profile[1],
+    }
+  }
+  const base = resultSets[test.id][result.resultIndex]
+  const translation = lang === 'en' ? resultTranslations[test.id]?.[result.resultIndex] : null
+  return {
+    ...base,
+    ...(translation ? { label: translation[0], summary: translation[1], advice: translation[2] } : {}),
+    score: result.score,
+    resultIndex: result.resultIndex,
+  }
+}
+
+function getReport(test, result, lang) {
+  const profile = lang === 'en' ? reportTranslations[test.id] : reportProfiles[test.id]
   if (test.id === 'mbti') {
     return {
       ...profile,
       title: `${result.type} · ${result.profileTitle}`,
       observation: result.profileSummary,
-      explanation: `${profile.explanation} 当前更明显的偏好组合是 ${result.type}。`,
+      explanation: lang === 'en' ? `${profile.explanation} Your clearest preference pattern is ${result.type}.` : `${profile.explanation} 当前更明显的偏好组合是 ${result.type}。`,
       dimensions: profile.dimensions,
       metrics: result.metrics,
       actions: [result.advice, ...profile.actions.slice(1)],
@@ -235,16 +273,29 @@ function getInitialRoute() {
   const path = window.location.pathname.replace(/\/$/, '') || '/'
   if (path === '/bundle') return { screen: 'home', bundle: true }
   const matched = tests.find((test) => test.path === path)
-  return matched ? { screen: 'test-home', test: matched } : { screen: 'home', bundle: false }
+  return matched ? { screen: 'test-home', test: matched } : { screen: path === '/' ? 'root' : 'not-found' }
+}
+
+function getInitialLanguage() {
+  const queryLanguage = new URLSearchParams(window.location.search).get('lang')
+  if (queryLanguage === 'en' || queryLanguage === 'zh') return queryLanguage
+  return window.localStorage.getItem('quick-check-language') === 'en' ? 'en' : 'zh'
 }
 
 function navigateTo(path) {
-  window.history.pushState({}, '', path)
+  window.history.pushState({}, '', `${path}${window.location.search}`)
   window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+const LanguageContext = React.createContext({ lang: 'zh', t: ui.zh, toggleLanguage: () => {} })
+
+function useLanguage() {
+  return React.useContext(LanguageContext)
 }
 
 function App() {
   const initialRoute = getInitialRoute()
+  const [lang, setLang] = useState(getInitialLanguage)
   const [route, setRoute] = useState(initialRoute)
   const [screen, setScreen] = useState(initialRoute.screen)
   const [selectedTest, setSelectedTest] = useState(initialRoute.test || null)
@@ -252,13 +303,17 @@ function App() {
   const [result, setResult] = useState(null)
   const [copied, setCopied] = useState(false)
 
-  const currentQuestion = selectedTest?.questions[answers.length]
+  const localizedTests = useMemo(() => tests.map((test) => getLocalizedTest(test, lang)), [lang])
+  const localizedSelectedTest = useMemo(
+    () => (selectedTest ? getLocalizedTest(selectedTest, lang) : null),
+    [selectedTest, lang],
+  )
+  const visibleResult = useMemo(
+    () => (selectedTest && result ? getVisibleResult(selectedTest, result, lang) : null),
+    [selectedTest, result, lang],
+  )
+  const currentQuestion = localizedSelectedTest?.questions[answers.length]
   const progress = selectedTest ? (answers.length / selectedTest.questions.length) * 100 : 0
-
-  const score = useMemo(() => {
-    if (!selectedTest) return 0
-    return answers.reduce((total, answer) => total + answer, 0)
-  }, [answers, selectedTest])
 
   React.useEffect(() => {
     const onPopState = () => {
@@ -273,8 +328,26 @@ function App() {
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
+  React.useEffect(() => {
+    window.localStorage.setItem('quick-check-language', lang)
+    document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN'
+    document.title = localizedSelectedTest
+      ? `${localizedSelectedTest.title} · ${ui[lang].brand}`
+      : ui[lang].rootFooter
+
+    const url = new URL(window.location.href)
+    if (lang === 'en') url.searchParams.set('lang', 'en')
+    else url.searchParams.delete('lang')
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  }, [lang, localizedSelectedTest])
+
+  function toggleLanguage() {
+    setLang((current) => (current === 'zh' ? 'en' : 'zh'))
+    setCopied(false)
+  }
+
   function startTest(test) {
-    setSelectedTest(test)
+    setSelectedTest(tests.find((item) => item.id === test.id) || test)
     setAnswers([])
     setResult(null)
     setScreen('quiz')
@@ -291,8 +364,10 @@ function App() {
         return
       }
       const resultPool = resultSets[selectedTest.id]
-      const finalResult = resultPool.find((item) => nextAnswers.reduce((a, b) => a + b, 0) <= item.max) || resultPool[resultPool.length - 1]
-      setResult({ ...finalResult, score: nextAnswers.reduce((a, b) => a + b, 0) })
+      const finalScore = nextAnswers.reduce((a, b) => a + b, 0)
+      const resultIndex = resultPool.findIndex((item) => finalScore <= item.max)
+      const safeResultIndex = resultIndex === -1 ? resultPool.length - 1 : resultIndex
+      setResult({ ...resultPool[safeResultIndex], score: finalScore, resultIndex: safeResultIndex })
       setScreen('result')
     }
   }
@@ -306,9 +381,13 @@ function App() {
   }
 
   function shareResult() {
-    const text = result.isMbti
-      ? `我刚完成了「${selectedTest.title}」，偏好画像是 ${result.type} · ${result.profileTitle}。`
-      : `我刚测了「${selectedTest.title}」，结果是「${result.label}」${result.score} 分。`
+    const text = lang === 'en'
+      ? (visibleResult.isMbti
+          ? `I just completed “${localizedSelectedTest.title}”. My preference profile is ${visibleResult.type} · ${visibleResult.profileTitle}.`
+          : `I just completed “${localizedSelectedTest.title}”. My result is “${visibleResult.label}” with ${visibleResult.score} points.`)
+      : (visibleResult.isMbti
+          ? `我刚完成了「${localizedSelectedTest.title}」，偏好画像是 ${visibleResult.type} · ${visibleResult.profileTitle}。`
+          : `我刚测了「${localizedSelectedTest.title}」，结果是「${visibleResult.label}」${visibleResult.score} 分。`)
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text)
       setCopied(true)
@@ -317,37 +396,40 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
-      <div className="ambient ambient-one" />
-      <div className="ambient ambient-two" />
-      {screen === 'home' && (
-        <HomeScreen tests={tests} onStart={startTest} onNavigate={navigateTo} bundle={route.bundle} />
-      )}
-      {screen === 'test-home' && selectedTest && (
-        <TestLanding test={selectedTest} onStart={startTest} onHome={() => navigateTo('/')} />
-      )}
-      {screen === 'quiz' && selectedTest && currentQuestion && (
-        <QuizScreen
-          test={selectedTest}
-          question={currentQuestion}
-          questionNumber={answers.length + 1}
-          total={selectedTest.questions.length}
-          progress={progress}
-          onBack={goBack}
-          onAnswer={chooseAnswer}
-        />
-      )}
-      {screen === 'result' && result && selectedTest && (
-        <ResultScreen
-          test={selectedTest}
-          result={result}
-          onRestart={() => startTest(selectedTest)}
-          onHome={() => navigateTo('/')}
-          onShare={shareResult}
-          copied={copied}
-        />
-      )}
-    </main>
+    <LanguageContext.Provider value={{ lang, t: ui[lang], toggleLanguage }}>
+      <main className={`app-shell lang-${lang}`}>
+        <div className="ambient ambient-one" />
+        <div className="ambient ambient-two" />
+        {screen === 'root' && <RootScreen />}
+        {screen === 'not-found' && <NotFoundScreen onHome={() => navigateTo('/')} />}
+        {screen === 'home' && (
+          <HomeScreen tests={localizedTests} onNavigate={navigateTo} />
+        )}
+        {screen === 'test-home' && localizedSelectedTest && (
+          <TestLanding test={localizedSelectedTest} onStart={() => startTest(selectedTest)} />
+        )}
+        {screen === 'quiz' && localizedSelectedTest && currentQuestion && (
+          <QuizScreen
+            test={localizedSelectedTest}
+            question={currentQuestion}
+            questionNumber={answers.length + 1}
+            total={selectedTest.questions.length}
+            progress={progress}
+            onBack={goBack}
+            onAnswer={chooseAnswer}
+          />
+        )}
+        {screen === 'result' && visibleResult && localizedSelectedTest && (
+          <ResultScreen
+            test={localizedSelectedTest}
+            result={visibleResult}
+            onRestart={() => startTest(selectedTest)}
+            onShare={shareResult}
+            copied={copied}
+          />
+        )}
+      </main>
+    </LanguageContext.Provider>
   )
 }
 
@@ -382,30 +464,68 @@ function calculateMbtiResult(questions, answers) {
 }
 
 function Header({ compact = false }) {
+  const { lang, t, toggleLanguage } = useLanguage()
   return (
     <header className={`topbar ${compact ? 'topbar-compact' : ''}`}>
       <div className="brand-mark"><Sparkles size={17} strokeWidth={2.5} /></div>
-      <span className="brand-name">小测一下</span>
-      <span className="brand-tagline">把最近的累，测成一个答案</span>
+      <span className="brand-name">{t.brand}</span>
+      <span className="brand-tagline">{t.tagline}</span>
+      <button className="language-button" onClick={toggleLanguage} aria-label={t.languageToggle} title={t.languageToggle}>
+        <Languages size={15} />
+        <span>{lang === 'zh' ? 'EN' : '中'}</span>
+      </button>
     </header>
   )
 }
 
-function HomeScreen({ tests, onStart, onNavigate, bundle }) {
+function RootScreen() {
+  const { t } = useLanguage()
+  return (
+    <div className="page access-page">
+      <Header />
+      <section className="access-content">
+        <div className="access-icon"><Sparkles size={24} /></div>
+        <span className="section-label">{t.rootLabel}</span>
+        <h1>{t.rootTitle}</h1>
+        <p>{t.rootBody}</p>
+      </section>
+      <footer className="footer">{t.rootFooter}</footer>
+    </div>
+  )
+}
+
+function NotFoundScreen({ onHome }) {
+  const { t } = useLanguage()
+  return (
+    <div className="page access-page">
+      <Header />
+      <section className="access-content">
+        <div className="access-icon"><CircleHelp size={24} /></div>
+        <span className="section-label">404</span>
+        <h1>{t.notFoundTitle}</h1>
+        <p>{t.notFoundBody}</p>
+        <button className="secondary-button" onClick={onHome}><ArrowLeft size={16} /> {t.backToEntry}</button>
+      </section>
+    </div>
+  )
+}
+
+function HomeScreen({ tests, onNavigate }) {
+  const { lang, t } = useLanguage()
   return (
     <div className="page home-page">
       <Header />
       <section className="hero">
-        <div className="hero-kicker"><span className="live-dot" /> 今日已有 2,438 人完成测评</div>
-        <h1>先别急着给自己<br /><em>下结论。</em></h1>
-        <p>{bundle ? '四个独立测评，一次完成。适合做成小红书单品链接，也可以作为合集商品使用。' : '用几分钟，把模糊的疲惫、关系和情绪，整理成一个看得懂的状态报告。'}</p>
-        <div className="hero-note"><CircleHelp size={15} /> 仅供自我觉察与娱乐，不替代专业判断</div>
+        <div className="hero-kicker"><span className="live-dot" /> {t.collectionKicker}</div>
+        <h1>{t.collectionTitleBefore}<br /><em>{t.collectionTitleEmphasis}</em></h1>
+        <p>{t.collectionBody}</p>
+        <div className="hero-note"><CircleHelp size={15} /> {t.collectionNote}</div>
       </section>
 
       <section className="section-head">
         <div>
-          <span className="section-label">Pick your check-in</span>
-          <h2>现在最想测什么？</h2>
+          <span className="section-label">{t.chooseLabel}</span>
+          <h2>{t.chooseTitle}</h2>
         </div>
         <BarChart3 size={20} className="section-icon" />
       </section>
@@ -434,55 +554,56 @@ function HomeScreen({ tests, onStart, onNavigate, bundle }) {
       </section>
 
       <section className="mini-proof">
-        <div className="proof-avatars"><span>林</span><span>小</span><span>M</span><span>+</span></div>
-        <div><strong>不是算命，是把感受说清楚</strong><span>每次测评都会给你一个可以执行的小建议</span></div>
+        <div className="proof-avatars"><span>{lang === 'zh' ? '林' : 'A'}</span><span>{lang === 'zh' ? '小' : 'K'}</span><span>M</span><span>+</span></div>
+        <div><strong>{t.collectionProofTitle}</strong><span>{t.collectionProofBody}</span></div>
       </section>
-      <footer className="footer">© 2026 小测一下 · 你的答案只属于你</footer>
+      <footer className="footer">{t.collectionFooter}</footer>
     </div>
   )
 }
 
-function TestLanding({ test, onStart, onHome }) {
+function TestLanding({ test, onStart }) {
+  const { t } = useLanguage()
   const Icon = test.icon
   return (
     <div className="page test-landing-page">
       <Header />
-      <button className="text-button landing-back" onClick={onHome}><ArrowLeft size={16} /> 全部测评</button>
       <section className={`landing-hero ${test.tone}`}>
         <div className="landing-icon"><Icon size={28} /></div>
         <span className="test-eyebrow">{test.eyebrow}</span>
         <h1>{test.title}</h1>
         <p>{test.description}</p>
-        <div className="landing-meta"><Clock3 size={14} /> {test.meta}<span />独立结果报告</div>
+        <div className="landing-meta"><Clock3 size={14} /> {test.meta}<span />{t.independentReport}</div>
       </section>
       <section className="landing-details">
-        <span className="section-label">What you will get</span>
-        <h2>答完就能看到完整结果</h2>
+        <span className="section-label">{t.landingLabel}</span>
+        <h2>{t.landingTitle}</h2>
         <div className="landing-points">
-          <div><strong>01</strong><span>你的核心指数与状态标签</span></div>
-          <div><strong>02</strong><span>三个维度的具体拆解</span></div>
-          <div><strong>03</strong><span>可以今天开始的小行动</span></div>
+          <div><strong>01</strong><span>{t.landingPoint1}</span></div>
+          <div><strong>02</strong><span>{t.landingPoint2}</span></div>
+          <div><strong>03</strong><span>{t.landingPoint3}</span></div>
         </div>
-        <button className="primary-button landing-start" onClick={() => onStart(test)}><Sparkles size={17} /> 开始测评 <ArrowRight size={17} /></button>
-        <p className="landing-note"><CircleHelp size={14} /> 这是自我觉察工具，没有标准答案，也不替代专业判断。</p>
+        <button className="primary-button landing-start" onClick={onStart}><Sparkles size={17} /> {t.start} <ArrowRight size={17} /></button>
+        <p className="landing-note"><CircleHelp size={14} /> {t.landingNote}</p>
       </section>
     </div>
   )
 }
 
 function QuizScreen({ test, question, questionNumber, total, progress, onBack, onAnswer }) {
+  const { t } = useLanguage()
   return (
     <div className="page quiz-page">
       <Header compact />
       <div className="quiz-toolbar">
-        <button className="icon-button" onClick={onBack} aria-label="返回"><ArrowLeft size={19} /></button>
+        <button className="icon-button" onClick={onBack} aria-label={t.back} title={t.back}><ArrowLeft size={19} /></button>
         <div className="quiz-title"><span>{test.title}</span><strong>{questionNumber} <small>/ {total}</small></strong></div>
         <div className="quiz-progress"><span style={{ width: `${progress}%` }} /></div>
       </div>
       <section className="question-area">
-        <div className="question-kicker">Question {String(questionNumber).padStart(2, '0')}</div>
+        <div className="question-kicker">{t.questionLabel} {String(questionNumber).padStart(2, '0')}</div>
         <h1>{question.text}</h1>
-        <p className="question-hint">选择最接近你最近状态的答案</p>
+        <p className="question-hint">{t.questionHint}</p>
         <div className="answer-list">
           {question.options.map((option, index) => (
             <button className="answer-option" key={option} onClick={() => onAnswer(index)}>
@@ -493,37 +614,38 @@ function QuizScreen({ test, question, questionNumber, total, progress, onBack, o
           ))}
         </div>
       </section>
-      <div className="quiz-footer"><Target size={15} /> 没有标准答案，诚实比“选得好看”更有用</div>
+      <div className="quiz-footer"><Target size={15} /> {t.quizFooter}</div>
     </div>
   )
 }
 
-function ResultScreen({ test, result, onRestart, onHome, onShare, copied }) {
-  const report = getReport(test, result)
+function ResultScreen({ test, result, onRestart, onShare, copied }) {
+  const { lang, t } = useLanguage()
+  const report = getReport(test, result, lang)
   return (
     <div className="page result-page">
       <Header compact />
-      <div className="result-topline"><button className="text-button" onClick={onHome}><ArrowLeft size={16} /> 返回首页</button><span>你的测评结果</span></div>
+      <div className="result-topline"><span>{test.title}</span><span>{t.yourResult}</span></div>
       <section className={`result-hero ${result.color}`}>
         <div className="result-orbit orbit-one" />
         <div className="result-orbit orbit-two" />
-        <span className="result-label">当前状态</span>
-        <div className={`score-row ${result.isMbti ? 'mbti-score' : ''}`}><strong>{result.isMbti ? result.label : result.score}</strong><span>{result.isMbti ? '偏好画像' : '分'}</span></div>
+        <span className="result-label">{t.currentState}</span>
+        <div className={`score-row ${result.isMbti ? 'mbti-score' : ''}`}><strong>{result.isMbti ? result.label : result.score}</strong><span>{result.isMbti ? t.preferenceProfile : t.points}</span></div>
         <h1>{result.label}</h1>
         <p>{result.summary}</p>
       </section>
 
       <section className="result-insight">
-        <div className="insight-title"><Sparkles size={17} /><span>给你的一句话</span></div>
-        <blockquote>“{result.advice}”</blockquote>
+        <div className="insight-title"><Sparkles size={17} /><span>{t.oneSentence}</span></div>
+        <blockquote>{result.advice}</blockquote>
         <div className="result-actions">
-          <button className="primary-button" onClick={onShare}>{copied ? <Check size={17} /> : <Share2 size={17} />} {copied ? '已复制结果' : '分享我的结果'}</button>
-          <button className="secondary-button" onClick={onRestart}><RotateCcw size={17} /> 再测一次</button>
+          <button className="primary-button" onClick={onShare}>{copied ? <Check size={17} /> : <Share2 size={17} />} {copied ? t.copied : t.share}</button>
+          <button className="secondary-button" onClick={onRestart}><RotateCcw size={17} /> {t.restart}</button>
         </div>
       </section>
 
       <section className="report-preview full-report">
-        <div className="preview-head"><div><span className="section-label">Your full check-in</span><h2>{report.title}</h2></div><FileText size={21} /></div>
+        <div className="preview-head"><div><span className="section-label">{t.fullReportLabel}</span><h2>{report.title}</h2></div><FileText size={21} /></div>
         <p className="report-intro">{report.explanation}</p>
         <div className="report-metrics">
           {report.metrics.map((metric) => (
@@ -534,19 +656,19 @@ function ResultScreen({ test, result, onRestart, onHome, onShare, copied }) {
           ))}
         </div>
         <div className="report-observation">
-          <span className="section-label">The main observation</span>
+          <span className="section-label">{t.mainObservation}</span>
           <strong>{report.observation}</strong>
         </div>
         <div className="report-actions">
-          <div className="report-actions-head"><span className="section-label">Start small</span><h3>接下来可以做什么</h3></div>
+          <div className="report-actions-head"><span className="section-label">{t.startSmall}</span><h3>{t.nextSteps}</h3></div>
           <ol>
             {report.actions.map((action) => <li key={action}>{action}</li>)}
           </ol>
         </div>
         <div className="report-reminder"><CircleHelp size={16} /><span>{report.reminder}</span></div>
-        <p className="report-disclaimer">这份报告基于你的自填答案生成，仅供自我觉察与娱乐，不构成医疗、心理、法律或关系事实判断。</p>
+        <p className="report-disclaimer">{t.disclaimer}</p>
       </section>
-      <footer className="footer">结果基于你的自填答案生成，仅供自我觉察与娱乐</footer>
+      <footer className="footer">{t.resultFooter}</footer>
     </div>
   )
 }

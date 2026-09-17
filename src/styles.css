@@ -1,7 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap');
-
 :root {
-  font-family: 'Manrope', 'Noto Sans SC', sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
   color: #242020;
   background: #f6f1e8;
   font-synthesis: none;
@@ -23,6 +21,9 @@ button:focus-visible { outline: 3px solid #242020; outline-offset: 3px; }
 .brand-mark { width: 31px; height: 31px; border-radius: 9px; display: grid; place-items: center; color: #fff; background: #dc6b58; }
 .brand-name { font-size: 16px; font-weight: 800; letter-spacing: .02em; }
 .brand-tagline { color: #817b74; font-size: 11px; margin-left: 3px; letter-spacing: .04em; }
+.language-button { margin-left: auto; min-width: 58px; height: 34px; padding: 0 10px; border: 1px solid rgba(36,32,32,.17); background: rgba(255,255,255,.24); color: #4e4742; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+.language-button:hover { border-color: #d56551; color: #b64f3e; background: rgba(255,255,255,.5); }
+.language-button span { font: 11px 'DM Mono', monospace; }
 
 .hero { padding: 82px 0 78px; max-width: 650px; }
 .hero-kicker, .hero-note, .test-meta, .quiz-footer { display: flex; align-items: center; gap: 7px; color: #827a72; font-size: 12px; }
@@ -59,6 +60,11 @@ h1, h2, h3, p { margin: 0; }
 .proof-avatars span:nth-child(2) { background: #d77d6c; }.proof-avatars span:nth-child(3) { background: #918ba2; }.proof-avatars span:nth-child(4) { background: #a9b9ac; color: #252121; }
 .mini-proof strong, .mini-proof span { display: block; }.mini-proof strong { font-size: 12px; }.mini-proof span { color: #837a71; font-size: 11px; margin-top: 3px; }
 .footer { color: #9c9389; font: 10px 'DM Mono', monospace; text-align: center; margin-top: 44px; }
+.access-page { min-height: 100vh; display: flex; flex-direction: column; }
+.access-content { max-width: 560px; margin: auto; padding: 90px 0 120px; }
+.access-icon { width: 54px; height: 54px; display: grid; place-items: center; color: #fff; background: #d56551; margin-bottom: 28px; }
+.access-content h1 { font-size: clamp(38px, 6vw, 62px); line-height: 1.08; letter-spacing: -.055em; max-width: 560px; }
+.access-content p { color: #766d65; font-size: 14px; line-height: 1.75; margin: 18px 0 28px; max-width: 430px; }
 
 .quiz-toolbar { padding: 22px 0 0; position: relative; }
 .icon-button, .modal-close { border: 0; background: transparent; cursor: pointer; color: #342d2b; }
@@ -76,8 +82,7 @@ h1, h2, h3, p { margin: 0; }
 .answer-option svg { margin-left: auto; color: #9e958b; }.answer-index { color: #d56551; font: 12px 'DM Mono', monospace; width: 20px; }
 .quiz-footer { justify-content: center; border-top: 1px solid rgba(36,32,32,.12); padding-top: 20px; font-size: 10px; }
 
-.landing-back { margin-top: 25px; }
-.landing-hero { min-height: 390px; margin-top: 18px; padding: 48px 52px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+.landing-hero { min-height: 390px; margin-top: 28px; padding: 48px 52px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
 .landing-hero::after { content: ''; position: absolute; width: 310px; height: 310px; border: 1px solid rgba(255,255,255,.42); border-radius: 50%; right: -75px; top: -85px; }
 .landing-hero.coral { background: #e9b2a3; }.landing-hero.lavender { background: #cbc5dc; }.landing-hero.mint { background: #b8d2c4; }.landing-hero.plum { background: #d6b9c7; }
 .landing-icon { width: 48px; height: 48px; display: grid; place-items: center; border: 1px solid rgba(36,32,32,.25); position: absolute; left: 52px; top: 45px; }
@@ -105,6 +110,20 @@ h1, h2, h3, p { margin: 0; }
 .result-actions { display: flex; gap: 9px; }.primary-button, .secondary-button, .restart-button { border: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 17px; font-size: 12px; }.primary-button { color: #fff; background: #292321; }.primary-button span { color: #e9b2a3; font: 11px 'DM Mono', monospace; margin-left: 8px; }.secondary-button { color: #342d2b; border: 1px solid #d5ccc2; background: transparent; }
 .report-preview { border-top: 1px solid rgba(36,32,32,.14); margin-top: 58px; padding-top: 23px; }.preview-head { display: flex; justify-content: space-between; align-items: start; }.preview-head > svg { color: #a69d94; }.report-intro { color: #786f67; font-size: 13px; line-height: 1.75; margin-top: 18px; max-width: 650px; }.report-metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 21px; margin-top: 29px; }.metric { border-top: 2px solid #d8cec3; padding-top: 11px; }.metric-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12px; }.metric-label strong { color: #d56551; font: 14px 'DM Mono', monospace; }.metric-track { height: 5px; background: #e4dbd1; margin-top: 11px; }.metric-track span { display: block; height: 100%; background: #d56551; }.report-observation { margin-top: 36px; padding: 21px 22px; background: #eee6dc; }.report-observation strong { display: block; font-size: 20px; line-height: 1.35; letter-spacing: -.04em; max-width: 560px; }.report-actions { display: grid; grid-template-columns: 1fr 1.5fr; gap: 28px; margin-top: 38px; padding-top: 23px; border-top: 1px solid rgba(36,32,32,.12); }.report-actions h3 { font-size: 20px; letter-spacing: -.04em; }.report-actions ol { margin: 0; padding: 0; list-style: none; counter-reset: report-step; }.report-actions li { counter-increment: report-step; display: grid; grid-template-columns: 25px 1fr; gap: 9px; padding: 0 0 14px; color: #655d56; font-size: 12px; line-height: 1.6; }.report-actions li::before { content: '0' counter(report-step); color: #d56551; font: 11px 'DM Mono', monospace; }.report-reminder { display: flex; gap: 8px; align-items: flex-start; margin-top: 24px; color: #847a71; font-size: 11px; line-height: 1.65; }.report-reminder svg { color: #d56551; flex: 0 0 auto; margin-top: 1px; }.report-disclaimer { border-top: 1px solid rgba(36,32,32,.1); color: #a1988e; font-size: 10px; line-height: 1.6; margin-top: 28px; padding-top: 15px; }
 
+.lang-en .hero h1,
+.lang-en .landing-hero h1,
+.lang-en .question-area h1,
+.lang-en .result-hero h1,
+.lang-en .access-content h1,
+.lang-en .test-card-bottom h3,
+.lang-en .preview-head h2,
+.lang-en .report-observation strong,
+.lang-en .report-actions h3,
+.lang-en .result-insight blockquote { letter-spacing: 0; }
+.lang-en .landing-hero h1 { font-size: clamp(38px, 6vw, 58px); max-width: 760px; }
+.lang-en .test-card-bottom h3 { max-width: 260px; font-size: 21px; }
+.lang-en .question-area h1 { font-size: clamp(30px, 4.7vw, 49px); }
+
 .modal-backdrop { position: fixed; inset: 0; z-index: 5; background: rgba(35,29,26,.45); display: grid; place-items: center; padding: 20px; }.report-modal { background: #fffaf3; width: min(100%, 430px); padding: 34px 30px 30px; position: relative; box-shadow: 0 20px 60px rgba(35,29,26,.2); }.modal-close { position: absolute; right: 17px; top: 13px; font-size: 24px; line-height: 1; color: #83786f; }.modal-icon { width: 42px; height: 42px; display: grid; place-items: center; color: #fff; background: #d56551; margin-bottom: 22px; }.report-modal h2 { font-size: 28px; letter-spacing: -.05em; margin-bottom: 12px; }.report-modal p { color: #786e65; font-size: 13px; line-height: 1.75; }.modal-product { display: flex; justify-content: space-between; margin: 24px 0 18px; border: 1px solid #ddd2c5; padding: 15px; font-size: 12px; }.modal-product span { color: #d56551; font: 13px 'DM Mono', monospace; }.full-width { width: 100%; }
 
 @media (max-width: 700px) {
@@ -125,6 +144,8 @@ h1, h2, h3, p { margin: 0; }
   .landing-hero { min-height: 430px; margin-left: -20px; margin-right: -20px; padding: 39px 25px; }
   .landing-icon { left: 25px; top: 30px; }
   .landing-hero h1 { font-size: 43px; }
+  .lang-en .landing-hero h1 { font-size: 38px; }
+  .lang-en .question-area h1 { font-size: 31px; }
   .landing-points { grid-template-columns: 1fr; gap: 17px; }
   .landing-points div { gap: 8px; }
   .landing-start { width: 100%; }
